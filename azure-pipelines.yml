@@ -8,11 +8,16 @@ pool:
 
 variables:
   - group: neomoto-variables
-  buildConfiguration: "Release"
-  dockerImageName: "neomoto-api"
-  dockerImageTag: "$(Build.BuildId)"
-  artifactName: "neomoto-drop"
-  projectPath: "ProjetoNetMottu"
+  - name: buildConfiguration
+    value: "Release"
+  - name: dockerImageName
+    value: "neomoto-api"
+  - name: dockerImageTag
+    value: "$(Build.BuildId)"
+  - name: artifactName
+    value: "neomoto-drop"
+  - name: projectPath
+    value: "ProjetoNetMottu"
 
 stages:
   - stage: CI
