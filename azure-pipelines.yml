@@ -7,6 +7,7 @@ pool:
   vmImage: "ubuntu-latest"
 
 variables:
+  - group: neomoto-variables
   buildConfiguration: "Release"
   dockerImageName: "neomoto-api"
   dockerImageTag: "$(Build.BuildId)"
