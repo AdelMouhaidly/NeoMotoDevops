@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: neomoto-postgres
+    environment:
+      POSTGRES_DB: neomoto
+      POSTGRES_USER: neomoto_user
+      POSTGRES_PASSWORD: neomoto_pass123
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U neomoto_user -d neomoto"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

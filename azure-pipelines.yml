@@ -1,0 +1,205 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: "ubuntu-latest"
+
+variables:
+  buildConfiguration: "Release"
+  dockerImageName: "neomoto-api"
+  dockerImageTag: "$(Build.BuildId)"
+  artifactName: "neomoto-drop"
+  projectPath: "ProjetoNetMottu"
+
+stages:
+  - stage: CI
+    displayName: "Continuous Integration"
+    jobs:
+      - job: Build
+        displayName: "Build and Test"
+        steps:
+          - task: UseDotNet@2
+            displayName: "Install .NET SDK"
+            inputs:
+              packageType: "sdk"
+              version: "9.x"
+              installationPath: $(Agent.ToolsDirectory)/dotnet
+
+          - task: DotNetCoreCLI@2
+            displayName: "Restore Dependencies"
+            inputs:
+              command: "restore"
+              projects: "$(projectPath)/**/*.csproj"
+
+          - task: DotNetCoreCLI@2
+            displayName: "Build Solution"
+            inputs:
+              command: "build"
+              projects: "$(projectPath)/**/*.csproj"
+              arguments: "--configuration $(buildConfiguration) --no-restore"
+
+          - task: DotNetCoreCLI@2
+            displayName: "Run Unit Tests"
+            inputs:
+              command: "test"
+              projects: "$(projectPath)/**/*Tests.csproj"
+              arguments: '--configuration $(buildConfiguration) --no-build --logger trx --collect:"XPlat Code Coverage"'
+              publishTestResults: true
+
+          - task: PublishTestResults@2
+            displayName: "Publish Test Results"
+            inputs:
+              testResultsFormat: "VSTest"
+              testResultsFiles: "**/TestResults/*.trx"
+              mergeTestResults: true
+              failTaskOnFailedTests: true
+
+          - task: DotNetCoreCLI@2
+            displayName: "Publish Application"
+            inputs:
+              command: "publish"
+              projects: "$(projectPath)/NeoMoto.Api/NeoMoto.Api.csproj"
+              arguments: "--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)/app --no-build"
+              publishWebProjects: false
+              zipAfterPublish: false
+
+          - task: Docker@2
+            displayName: "Build Docker Image"
+            inputs:
+              command: "build"
+              dockerfile: "$(projectPath)/Dockerfile"
+              buildContext: "$(projectPath)"
+              repository: "$(dockerImageName)"
+              tags: |
+                $(dockerImageTag)
+                latest
+
+          - script: |
+              docker save $(dockerImageName):$(dockerImageTag) -o $(Build.ArtifactStagingDirectory)/$(dockerImageName).tar
+            displayName: "Save Docker Image"
+
+          - task: PublishBuildArtifacts@1
+            displayName: "Publish Build Artifacts"
+            inputs:
+              PathtoPublish: "$(Build.ArtifactStagingDirectory)"
+              ArtifactName: "$(artifactName)"
+              publishLocation: "Container"
+
+  - stage: CD
+    displayName: "Continuous Deployment"
+    dependsOn: CI
+    condition: succeeded()
+    jobs:
+      - deployment: Deploy
+        displayName: "Deploy to Azure"
+        environment: "Production"
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: DownloadBuildArtifacts@0
+                  displayName: "Download Build Artifacts"
+                  inputs:
+                    buildType: "current"
+                    downloadType: "single"
+                    artifactName: "$(artifactName)"
+                    downloadPath: "$(System.ArtifactsDirectory)"
+
+                - task: AzureCLI@2
+                  displayName: "Azure CLI - Login and Setup"
+                  inputs:
+                    azureSubscription: "$(azureSubscription)"
+                    scriptType: "bash"
+                    scriptLocation: "inlineScript"
+                    inlineScript: |
+                      echo "Azure CLI version:"
+                      az --version
+                      echo "Logged in successfully"
+
+                - script: |
+                    docker load -i $(System.ArtifactsDirectory)/$(artifactName)/$(dockerImageName).tar
+                  displayName: "Load Docker Image"
+
+                - task: AzureCLI@2
+                  displayName: "Login to Azure Container Registry"
+                  inputs:
+                    azureSubscription: "$(azureSubscription)"
+                    scriptType: "bash"
+                    scriptLocation: "inlineScript"
+                    inlineScript: |
+                      az acr login --name $(acrName)
+
+                - script: |
+                    docker tag $(dockerImageName):$(dockerImageTag) $(acrLoginServer)/$(dockerImageName):$(dockerImageTag)
+                  displayName: "Tag Docker Image for ACR"
+
+                - task: Docker@2
+                  displayName: "Push to Azure Container Registry"
+                  inputs:
+                    containerRegistry: "$(dockerRegistryServiceConnection)"
+                    repository: "$(dockerImageName)"
+                    command: "push"
+                    tags: |
+                      $(dockerImageTag)
+                      latest
+
+                - task: AzureCLI@2
+                  displayName: "Deploy to Azure Container Instance"
+                  inputs:
+                    azureSubscription: "$(azureSubscription)"
+                    scriptType: "bash"
+                    scriptLocation: "inlineScript"
+                    inlineScript: |
+                      # Delete existing container if exists
+                      az container delete \
+                        --resource-group $(resourceGroupName) \
+                        --name $(containerInstanceName) \
+                        --yes || true
+
+                      # Create new container instance
+                      az container create \
+                        --resource-group $(resourceGroupName) \
+                        --name $(containerInstanceName) \
+                        --image $(acrLoginServer)/$(dockerImageName):$(dockerImageTag) \
+                        --cpu 1 \
+                        --memory 1.5 \
+                        --registry-login-server $(acrLoginServer) \
+                        --registry-username $(acrUsername) \
+                        --registry-password $(acrPassword) \
+                        --dns-name-label $(dnsNameLabel) \
+                        --ports 8080 \
+                        --environment-variables \
+                          ASPNETCORE_ENVIRONMENT=Production \
+                        --secure-environment-variables \
+                          DB_CONNECTION_STRING="$(dbConnectionString)"
+
+                - task: AzureCLI@2
+                  displayName: "Get Container Instance Details"
+                  inputs:
+                    azureSubscription: "$(azureSubscription)"
+                    scriptType: "bash"
+                    scriptLocation: "inlineScript"
+                    inlineScript: |
+                      echo "Getting container instance details..."
+
+                      az container show \
+                        --resource-group $(resourceGroupName) \
+                        --name $(containerInstanceName) \
+                        --query "{FQDN:ipAddress.fqdn,IP:ipAddress.ip,State:instanceView.state}" \
+                        --output table
+
+                      FQDN=$(az container show \
+                        --resource-group $(resourceGroupName) \
+                        --name $(containerInstanceName) \
+                        --query "ipAddress.fqdn" \
+                        --output tsv)
+
+                      echo "================================"
+                      echo "Container deployed successfully!"
+                      echo "================================"
+                      echo "Application URL: http://$FQDN:8080"
+                      echo "Swagger URL: http://$FQDN:8080/swagger"
+                      echo "API Endpoints: http://$FQDN:8080/api/filiais"
+                      echo "================================"
