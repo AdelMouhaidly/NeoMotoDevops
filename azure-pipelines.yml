@@ -172,6 +172,7 @@ stages:
                         --resource-group $(resourceGroupName) \
                         --name $(containerInstanceName) \
                         --image $(acrLoginServer)/$(dockerImageName):$(dockerImageTag) \
+                        --os-type Linux \
                         --cpu 1 \
                         --memory 1.5 \
                         --registry-login-server $(acrLoginServer) \
