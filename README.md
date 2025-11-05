@@ -8,11 +8,11 @@
 - Adel Mouhaidly - RM557705 - 2TDSA
 - Tiago Augusto Desiderato - RM558485 - 2TDSB
 
-## Links do Projet
+## Links do Projeto
 
 - **GitHub:** https://github.com/AdelMouhaidly/NeoMotoDevops.git
 - **Azure DevOps:** 
-- **YouTube:** 
+- **YouTube:** https://youtu.be/dIJ2qahu6S8?si=EEYbln0V5JPE7Ei9
 
 ## Descricao da Solucao
 
