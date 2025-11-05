@@ -11,42 +11,45 @@
 ## Links do Projeto
 
 - **GitHub:** https://github.com/AdelMouhaidly/NeoMotoDevops.git
-- **Azure DevOps:** 
+- **Azure DevOps:** [Link do Projeto Azure DevOps]
 - **YouTube:** https://youtu.be/dIJ2qahu6S8?si=EEYbln0V5JPE7Ei9
 
 ## Descricao da Solucao
 
-A **NeoMoto API** é uma solucao completa para gestao de frotas de motocicletas, desenvolvida com:
+A **NeoMoto API** e uma solucao completa para gestao de frotas de motocicletas, desenvolvida com .NET 9.0 utilizando Minimal API, PostgreSQL 15 como banco de dados em nuvem (Azure Database for PostgreSQL), Docker para containerizacao, Azure DevOps para CI/CD e Azure Container Instance para hosting da aplicacao.
 
-- **.NET 9.0** com Minimal API
-- **PostgreSQL 15** (Azure Database for PostgreSQL)
-- **Docker** para containerizacao
-- **Azure DevOps** para CI/CD
-- **Azure Container Instance** para hosting
+### Stack de Tecnologias:
+
+- .NET 9.0 (Minimal API)
+- PostgreSQL 15 (Azure Database for PostgreSQL Flexible Server)
+- Docker
+- Azure DevOps (Pipelines CI/CD)
+- Azure Container Registry (ACR)
+- Azure Container Instance (ACI)
+- Entity Framework Core 8.0
+- xUnit (testes automatizados)
 
 ### Funcionalidades:
 
 - CRUD completo para Filiais, Motos e Manutencoes
 - Paginacao de resultados
 - HATEOAS com links relacionais
-- Swagger/OpenAPI
-- Testes automatizados
+- Swagger/OpenAPI para documentacao da API
+- Testes automatizados com xUnit
 
 ## Estrutura do Projeto
 
 ```
 Challenge4Devops2Sem/
-├── ProjetoNetMottu/              # Projeto .NET
+├── ProjetoNetMottu/
 │   ├── NeoMoto.Api/             # API REST
-│   ├── NeoMoto.Domain/          # Entidades
+│   ├── NeoMoto.Domain/          # Entidades de dominio
 │   ├── NeoMoto.Infrastructure/  # DbContext e Migrations
 │   ├── NeoMoto.Tests/           # Testes automatizados
 │   ├── Dockerfile               # Container da aplicacao
 │   └── docker-compose.yml       # PostgreSQL local
 ├── azure-pipelines.yml          # Pipeline CI/CD completa
-├── INSTRUCOES_AZURE_DEVOPS.md   # Guia de configuracao
-├── TEMPLATE_PDF.md              # Template para documentacao
-└── azure-variables-template.txt # Variaveis do Azure DevOps
+└── setup-azure-resources.sh     # Script para criar recursos Azure
 ```
 
 ## Pipeline CI/CD
@@ -70,27 +73,46 @@ Challenge4Devops2Sem/
 
 ### 1. Configurar Recursos no Azure
 
-Execute os comandos no arquivo `azure-variables-template.txt` para criar:
+Execute o script para criar todos os recursos necessarios:
 
-- Resource Group
-- Azure Container Registry
-- Azure Database for PostgreSQL
+```bash
+bash setup-azure-resources.sh
+```
+
+O script cria automaticamente:
+
+- Resource Group (rg-neomoto-prod)
+- Azure Container Registry (neomotoacr)
+- Azure Database for PostgreSQL Flexible Server (neomoto-db-neomoto)
+- Firewall rules
+- Azure Container Instance (neomoto-api-neomoto)
 
 ### 2. Configurar Azure DevOps
 
-Siga as instrucoes em `INSTRUCOES_AZURE_DEVOPS.md`:
-
-- Criar projeto no Azure DevOps
-- Configurar service connections
-- Configurar variaveis protegidas
-- Conectar ao GitHub
-- Convidar o professor
+1. Criar projeto no Azure DevOps (nome: "Sprint 4 - Azure DevOps")
+2. Configurar Service Connections:
+   - azure-connection (Azure Resource Manager)
+   - acr-connection (Docker Registry)
+3. Criar Variable Group "neomoto-variables" com variaveis protegidas:
+   - acrName
+   - acrLoginServer
+   - acrUsername
+   - acrPassword
+   - resourceGroupName
+   - containerInstanceName
+   - dnsNameLabel
+   - dbConnectionString
+4. Conectar pipeline ao repositorio GitHub
+5. Convidar professor com acesso Basic
 
 ### 3. Aplicar Migrations no Banco
 
-```powershell
+```bash
 cd ProjetoNetMottu
-.\run-migrations-azure.ps1 -ServerName "neomoto-db-server" -Username "neomoto_admin" -Password "SuaSenha"
+dotnet ef database update \
+  --project NeoMoto.Infrastructure \
+  --startup-project NeoMoto.Api \
+  --connection "Host=neomoto-db-neomoto.postgres.database.azure.com;Port=5432;Database=neomoto;Username=neomoto_admin;Password=NeoMoto2024!;SslMode=Require"
 ```
 
 ### 4. Executar Pipeline
@@ -98,12 +120,6 @@ cd ProjetoNetMottu
 - Faca um commit na branch master
 - Pipeline sera executada automaticamente
 - Aguarde deploy no Azure Container Instance
-
-### 5. Testar a API
-
-```powershell
-.\test-crud.ps1 -BaseUrl "http://[seu-dns].brazilsouth.azurecontainer.io:8080"
-```
 
 ## Desenvolvimento Local
 
@@ -143,6 +159,27 @@ dotnet test
 
 ## Gerenciamento de Recursos Azure
 
+### Deletar Resource Group Inteiro
+
+Para deletar todos os recursos do projeto (Container Instance, PostgreSQL, ACR, etc):
+
+```bash
+az group delete \
+  --name rg-neomoto-prod \
+  --yes \
+  --no-wait
+```
+
+**CUIDADO:** Isso deleta TUDO. Aguarde 5-10 minutos para a delecao completar.
+
+Para recriar tudo apos a delecao:
+
+```bash
+bash setup-azure-resources.sh
+```
+
+---
+
 ### Parar/Deletar Recursos para Economizar
 
 #### Opção 1: Deletar apenas o Container Instance (Recomendado)
@@ -156,11 +193,11 @@ az container delete \
   --yes
 ```
 
-**O que mantém:**
+**O que mantem:**
 
-- ✅ ACR (imagens Docker preservadas)
-- ✅ PostgreSQL (banco de dados preservado)
-- ✅ Todas as configurações
+- ACR (imagens Docker preservadas)
+- PostgreSQL (banco de dados preservado)
+- Todas as configuracoes
 
 **Para rodar novamente:**
 
@@ -188,9 +225,9 @@ az postgres flexible-server start \
 
 ---
 
-#### Opção 3: Deletar Resource Group Inteiro (Máxima Economia)
+#### Opção 3: Deletar Resource Group Inteiro (Maxima Economia)
 
-⚠️ **CUIDADO:** Isso deleta TUDO (Container Instance, PostgreSQL, ACR, etc).
+**CUIDADO:** Isso deleta TUDO (Container Instance, PostgreSQL, ACR, etc).
 
 ```bash
 az group delete \
@@ -199,18 +236,18 @@ az group delete \
   --no-wait
 ```
 
-**O que é perdido:**
+**O que e perdido:**
 
-- ❌ Dados do banco de dados
-- ❌ Imagens Docker no ACR
-- ❌ Todas as configurações dos recursos
+- Dados do banco de dados
+- Imagens Docker no ACR
+- Todas as configuracoes dos recursos
 
-**O que é mantido:**
+**O que e mantido:**
 
-- ✅ Código no GitHub
-- ✅ Pipeline no Azure DevOps
-- ✅ Service Connections
-- ✅ Variable Groups
+- Codigo no GitHub
+- Pipeline no Azure DevOps
+- Service Connections
+- Variable Groups
 
 **Para recriar tudo:**
 
@@ -351,32 +388,22 @@ O video cobre:
 7. Recursos no Portal Azure
 8. CRUD completo com validacao no banco
 
-## Criterios de Avaliacao Atendidos
+## Requisitos Atendidos
 
-- ✅ Descricao da solucao
-- ✅ Diagrama da arquitetura + Fluxo CI/CD
-- ✅ Detalhamento dos componentes
-- ✅ Banco de dados em nuvem (PostgreSQL Azure)
-- ✅ Projeto configurado no Azure DevOps
-- ✅ Professor convidado com acesso Basic
-- ✅ Pipeline CI/CD funcionando
-- ✅ Build + testes automaticos
-- ✅ Deploy automatico
-- ✅ Trigger na branch master
-- ✅ Variaveis de ambiente protegidas
-- ✅ Artefato gerado e publicado
-- ✅ Etapa de testes
-- ✅ Deploy com Docker no ACI
-- ✅ Video demonstrativo completo
-
-## Suporte
-
-Para problemas ou duvidas:
-
-1. Verificar `INSTRUCOES_AZURE_DEVOPS.md`
-2. Revisar logs da pipeline
-3. Validar variaveis de ambiente
-4. Conferir connection string do banco
+- Descricao da solucao
+- Diagrama da arquitetura + Fluxo CI/CD
+- Detalhamento dos componentes
+- Banco de dados em nuvem (PostgreSQL Azure)
+- Projeto configurado no Azure DevOps
+- Pipeline CI/CD funcionando
+- Build + testes automaticos
+- Deploy automatico
+- Trigger na branch master
+- Variaveis de ambiente protegidas
+- Artefato gerado e publicado
+- Etapa de testes
+- Deploy com Docker no ACI
+- Video demonstrativo completo
 
 ## Licenca
 
