@@ -6,17 +6,26 @@
 
 set -e  # Para em caso de erro
 
-echo "================================"
-echo "NeoMoto - Setup Azure Resources"
-echo "================================"
-echo ""
-
-# Cores para output
+# Cores para output (definir antes do trap)
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
+
+# Função para tratar erros
+handle_error() {
+    echo -e "${RED}ERRO: Falha na execução do script!${NC}"
+    echo "Linha: $1"
+    exit 1
+}
+
+trap 'handle_error $LINENO' ERR
+
+echo "================================"
+echo "NeoMoto - Setup Azure Resources"
+echo "================================"
+echo ""
 
 # ==============================================================================
 # 1. COLETAR INFORMACOES
@@ -197,9 +206,9 @@ echo -e "${CYAN}Passo 8: Configurando Firewall do PostgreSQL...${NC}"
 
 # Permitir servicos Azure
 if az postgres flexible-server firewall-rule show \
-    --name AllowAzureServices \
-    --server-name $POSTGRES_SERVER \
-    --resource-group $RESOURCE_GROUP &> /dev/null; then
+    --resource-group $RESOURCE_GROUP \
+    --name $POSTGRES_SERVER \
+    --rule-name AllowAzureServices &> /dev/null; then
     echo -e "${YELLOW}Regra AllowAzureServices ja existe${NC}"
 else
     az postgres flexible-server firewall-rule create \
@@ -210,8 +219,28 @@ else
         --end-ip-address 0.0.0.0 \
         --output table
     
-    echo -e "${GREEN}Firewall configurado!${NC}"
+    echo -e "${GREEN}Regra AllowAzureServices criada!${NC}"
 fi
+
+# Permitir todos os IPs (para desenvolvimento/testes)
+if az postgres flexible-server firewall-rule show \
+    --resource-group $RESOURCE_GROUP \
+    --name $POSTGRES_SERVER \
+    --rule-name AllowAllIPs &> /dev/null; then
+    echo -e "${YELLOW}Regra AllowAllIPs ja existe${NC}"
+else
+    az postgres flexible-server firewall-rule create \
+        --resource-group $RESOURCE_GROUP \
+        --name $POSTGRES_SERVER \
+        --rule-name AllowAllIPs \
+        --start-ip-address 0.0.0.0 \
+        --end-ip-address 255.255.255.255 \
+        --output table
+    
+    echo -e "${GREEN}Regra AllowAllIPs criada!${NC}"
+fi
+
+echo -e "${GREEN}Firewall configurado!${NC}"
 
 echo ""
 
@@ -296,7 +325,7 @@ PROXIMOS PASSOS
 3. FAZER DEPLOY:
    git add .
    git commit -m "Add CI/CD pipeline"
-   git push origin master
+   git push origin main
 
 4. ACESSAR APLICACAO:
    URL: http://neomoto-api-${NOME_UNICO}.brazilsouth.azurecontainer.io:8080

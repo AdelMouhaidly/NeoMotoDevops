@@ -9,7 +9,7 @@
 
 ## Links do Projeto
 
-- **GitHub:** [Link do Repositorio]
+- **GitHub:** https://github.com/AdelMouhaidly/NeoMotoDevops.git
 - **Azure DevOps:** [Link do Projeto Azure DevOps]
 - **YouTube:** [Link do Video]
 
