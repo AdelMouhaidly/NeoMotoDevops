@@ -4,15 +4,15 @@
 
 **Integrantes:**
 
-- Afonso Correia Pereira - RM557863 - 2TDSPS
-- Adel Mouhaidly - RM557705 - 2TDSPS
-- Tiago Augusto Desiderato - RM558485 - 2TDSPS
+- Afonso Correia Pereira - RM557863 - 2TDSA
+- Adel Mouhaidly - RM557705 - 2TDSA
+- Tiago Augusto Desiderato - RM558485 - 2TDSB
 
 ## Links do Projeto
 
 - **GitHub:** https://github.com/AdelMouhaidly/NeoMotoDevops.git
-- **Azure DevOps:** [Link do Projeto Azure DevOps]
-- **YouTube:** [Link do Video]
+- **Azure DevOps:** 
+- **YouTube:** 
 
 ## Descricao da Solucao
 
