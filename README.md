@@ -8,7 +8,7 @@
 - Adel Mouhaidly - RM557705 - 2TDSA
 - Tiago Augusto Desiderato - RM558485 - 2TDSB
 
-## Links do Projeto
+## Links do Projet
 
 - **GitHub:** https://github.com/AdelMouhaidly/NeoMotoDevops.git
 - **Azure DevOps:** 
