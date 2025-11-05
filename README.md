@@ -16,7 +16,7 @@
 
 ## Descricao da Solucao
 
-A **NeoMoto API** e uma solucao completa para gestao de frotas de motocicletas, desenvolvida com:
+A **NeoMoto API** é uma solucao completa para gestao de frotas de motocicletas, desenvolvida com:
 
 - **.NET 9.0** com Minimal API
 - **PostgreSQL 15** (Azure Database for PostgreSQL)
