@@ -101,6 +101,8 @@ stages:
       - deployment: Deploy
         displayName: "Deploy to Azure"
         environment: "Production"
+        variables:
+          - group: neomoto-variables
         strategy:
           runOnce:
             deploy:
