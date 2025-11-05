@@ -141,6 +141,7 @@ stages:
 
                 - script: |
                     docker tag $(dockerImageName):$(dockerImageTag) $(acrLoginServer)/$(dockerImageName):$(dockerImageTag)
+                    docker tag $(dockerImageName):$(dockerImageTag) $(acrLoginServer)/$(dockerImageName):latest
                   displayName: "Tag Docker Image for ACR"
 
                 - task: Docker@2
