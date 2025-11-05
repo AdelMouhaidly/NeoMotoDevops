@@ -167,7 +167,7 @@ stages:
                         --name $(containerInstanceName) \
                         --yes || true
 
-                      # Create new container instance
+                      
                       az container create \
                         --resource-group $(resourceGroupName) \
                         --name $(containerInstanceName) \
