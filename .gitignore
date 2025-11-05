@@ -65,3 +65,7 @@ docker-compose.override.yml
 # Azure DevOps
 .azure/
 
+# Azure Credentials (NUNCA COMMITAR!)
+azure-credentials*.txt
+*credentials*.txt
+

@@ -28,17 +28,14 @@ echo "================================"
 echo ""
 
 # ==============================================================================
-# 1. COLETAR INFORMACOES
+# 1. CONFIGURACAO INICIAL
 # ==============================================================================
 
 echo -e "${CYAN}Passo 1: Configuracao Inicial${NC}"
 echo ""
 
-read -p "Digite um nome UNICO para seus recursos (ex: seunome): " NOME_UNICO
-if [ -z "$NOME_UNICO" ]; then
-    echo -e "${RED}Nome nao pode ser vazio!${NC}"
-    exit 1
-fi
+# Nome fixo para os recursos
+NOME_UNICO="neomoto"
 
 # Variaveis
 RESOURCE_GROUP="rg-neomoto-prod"
@@ -49,6 +46,7 @@ POSTGRES_USER="neomoto_admin"
 POSTGRES_PASSWORD="NeoMoto2024!"
 POSTGRES_DATABASE="neomoto"
 
+echo -e "${CYAN}Nome fixo configurado: neomoto${NC}"
 echo ""
 echo -e "${YELLOW}Recursos que serao criados:${NC}"
 echo "  - Resource Group: $RESOURCE_GROUP"
@@ -154,9 +152,11 @@ echo -e "${CYAN}Passo 6: Criando PostgreSQL Flexible Server...${NC}"
 echo "Isso pode levar 5-10 minutos..."
 
 if az postgres flexible-server show --name $POSTGRES_SERVER --resource-group $RESOURCE_GROUP &> /dev/null; then
-    echo -e "${YELLOW}PostgreSQL Server ja existe${NC}"
+    echo -e "${YELLOW}PostgreSQL Server ja existe no resource group${NC}"
 else
-    az postgres flexible-server create \
+    # Desabilitar set -e temporariamente para tratar erro de nome já usado
+    set +e
+    CREATE_OUTPUT=$(az postgres flexible-server create \
         --name $POSTGRES_SERVER \
         --resource-group $RESOURCE_GROUP \
         --location $LOCATION \
@@ -167,10 +167,28 @@ else
         --storage-size 32 \
         --version 15 \
         --public-access 0.0.0.0 \
-        --yes \
-        --output table
+        --yes 2>&1)
+    CREATE_EXIT_CODE=$?
+    set -e
     
-    echo -e "${GREEN}PostgreSQL Server criado!${NC}"
+    if [ $CREATE_EXIT_CODE -ne 0 ]; then
+        if echo "$CREATE_OUTPUT" | grep -q "already used"; then
+            echo -e "${YELLOW}Nome do servidor ja esta em uso (pode estar em outro resource group ou ainda sendo deletado)${NC}"
+            echo -e "${YELLOW}Se voce deletou o resource group recentemente, aguarde alguns minutos.${NC}"
+            echo -e "${YELLOW}Ou verifique se o servidor existe em outro resource group:${NC}"
+            echo -e "${CYAN}az postgres flexible-server list --query \"[?name=='$POSTGRES_SERVER'].{Name:name, ResourceGroup:resourceGroup}\" --output table${NC}"
+            echo ""
+            echo -e "${RED}Erro: Nome do servidor PostgreSQL ja esta em uso.${NC}"
+            echo -e "${YELLOW}Solucao: Deletar o resource group ou aguardar alguns minutos apos a delecao.${NC}"
+            exit 1
+        else
+            echo -e "${RED}Erro ao criar PostgreSQL Server:${NC}"
+            echo "$CREATE_OUTPUT"
+            exit 1
+        fi
+    else
+        echo -e "${GREEN}PostgreSQL Server criado!${NC}"
+    fi
 fi
 
 echo ""
@@ -190,8 +208,7 @@ else
     az postgres flexible-server db create \
         --resource-group $RESOURCE_GROUP \
         --server-name $POSTGRES_SERVER \
-        --database-name $POSTGRES_DATABASE \
-        --output table
+        --database-name $POSTGRES_DATABASE
     
     echo -e "${GREEN}Database criada!${NC}"
 fi
@@ -216,8 +233,7 @@ else
         --name $POSTGRES_SERVER \
         --rule-name AllowAzureServices \
         --start-ip-address 0.0.0.0 \
-        --end-ip-address 0.0.0.0 \
-        --output table
+        --end-ip-address 0.0.0.0
     
     echo -e "${GREEN}Regra AllowAzureServices criada!${NC}"
 fi
@@ -234,8 +250,7 @@ else
         --name $POSTGRES_SERVER \
         --rule-name AllowAllIPs \
         --start-ip-address 0.0.0.0 \
-        --end-ip-address 255.255.255.255 \
-        --output table
+        --end-ip-address 255.255.255.255
     
     echo -e "${GREEN}Regra AllowAllIPs criada!${NC}"
 fi

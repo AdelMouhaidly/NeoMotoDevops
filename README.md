@@ -3,6 +3,7 @@
 ## Informacoes do Grupo
 
 **Integrantes:**
+
 - Afonso Correia Pereira - RM557863 - 2TDSPS
 - Adel Mouhaidly - RM557705 - 2TDSPS
 - Tiago Augusto Desiderato - RM558485 - 2TDSPS
@@ -24,6 +25,7 @@ A **NeoMoto API** e uma solucao completa para gestao de frotas de motocicletas, 
 - **Azure Container Instance** para hosting
 
 ### Funcionalidades:
+
 - CRUD completo para Filiais, Motos e Manutencoes
 - Paginacao de resultados
 - HATEOAS com links relacionais
@@ -50,6 +52,7 @@ Challenge4Devops2Sem/
 ## Pipeline CI/CD
 
 ### CI (Continuous Integration)
+
 - Trigger automatico na branch master
 - Build com .NET 9
 - Testes automatizados (xUnit)
@@ -57,6 +60,7 @@ Challenge4Devops2Sem/
 - Publicacao de artefatos
 
 ### CD (Continuous Deployment)
+
 - Deploy automatico apos CI
 - Push para Azure Container Registry
 - Deploy no Azure Container Instance (ACI)
@@ -67,6 +71,7 @@ Challenge4Devops2Sem/
 ### 1. Configurar Recursos no Azure
 
 Execute os comandos no arquivo `azure-variables-template.txt` para criar:
+
 - Resource Group
 - Azure Container Registry
 - Azure Database for PostgreSQL
@@ -74,6 +79,7 @@ Execute os comandos no arquivo `azure-variables-template.txt` para criar:
 ### 2. Configurar Azure DevOps
 
 Siga as instrucoes em `INSTRUCOES_AZURE_DEVOPS.md`:
+
 - Criar projeto no Azure DevOps
 - Configurar service connections
 - Configurar variaveis protegidas
@@ -102,6 +108,7 @@ cd ProjetoNetMottu
 ## Desenvolvimento Local
 
 ### Requisitos:
+
 - .NET SDK 9.0
 - Docker Desktop
 - PowerShell
@@ -134,14 +141,141 @@ cd ProjetoNetMottu
 dotnet test
 ```
 
+## Gerenciamento de Recursos Azure
+
+### Parar/Deletar Recursos para Economizar
+
+#### Opção 1: Deletar apenas o Container Instance (Recomendado)
+
+Para parar a aplicação sem perder os outros recursos (banco de dados, ACR, etc):
+
+```bash
+az container delete \
+  --resource-group rg-neomoto-prod \
+  --name neomoto-api \
+  --yes
+```
+
+**O que mantém:**
+
+- ✅ ACR (imagens Docker preservadas)
+- ✅ PostgreSQL (banco de dados preservado)
+- ✅ Todas as configurações
+
+**Para rodar novamente:**
+
+- Execute a pipeline novamente (ela vai recriar o Container Instance automaticamente)
+
+---
+
+#### Opção 2: Parar o PostgreSQL (Economiza mais)
+
+Para parar o servidor PostgreSQL (mantém dados, mas para o serviço):
+
+```bash
+az postgres flexible-server stop \
+  --resource-group rg-neomoto-prod \
+  --name neomoto-db-neomoto
+```
+
+**Para iniciar novamente:**
+
+```bash
+az postgres flexible-server start \
+  --resource-group rg-neomoto-prod \
+  --name neomoto-db-neomoto
+```
+
+---
+
+#### Opção 3: Deletar Resource Group Inteiro (Máxima Economia)
+
+⚠️ **CUIDADO:** Isso deleta TUDO (Container Instance, PostgreSQL, ACR, etc).
+
+```bash
+az group delete \
+  --name rg-neomoto-prod \
+  --yes \
+  --no-wait
+```
+
+**O que é perdido:**
+
+- ❌ Dados do banco de dados
+- ❌ Imagens Docker no ACR
+- ❌ Todas as configurações dos recursos
+
+**O que é mantido:**
+
+- ✅ Código no GitHub
+- ✅ Pipeline no Azure DevOps
+- ✅ Service Connections
+- ✅ Variable Groups
+
+**Para recriar tudo:**
+
+1. Aguarde a deleção terminar (5-10 minutos)
+2. Execute o script novamente:
+   ```bash
+   bash setup-azure-resources.sh
+   ```
+3. Aplique migrations novamente:
+   ```bash
+   cd ProjetoNetMottu
+   dotnet ef database update \
+     --project NeoMoto.Infrastructure \
+     --startup-project NeoMoto.Api \
+     --connection "Host=neomoto-db-neomoto.postgres.database.azure.com;Port=5432;Database=neomoto;Username=neomoto_admin;Password=NeoMoto2024!;SslMode=Require"
+   ```
+4. Atualize Variable Group no Azure DevOps (se necessário):
+   - Novas credenciais do ACR
+   - Nova connection string do banco
+5. Execute a pipeline novamente
+
+---
+
+### Verificar Status dos Recursos
+
+```bash
+# Ver todos os recursos no Resource Group
+az resource list \
+  --resource-group rg-neomoto-prod \
+  --output table
+
+# Ver status do Container Instance
+az container show \
+  --resource-group rg-neomoto-prod \
+  --name neomoto-api \
+  --query "{State:instanceView.state,IP:ipAddress.ip,FQDN:ipAddress.fqdn}" \
+  --output table
+
+# Ver status do PostgreSQL
+az postgres flexible-server show \
+  --resource-group rg-neomoto-prod \
+  --name neomoto-db-neomoto \
+  --query "{State:state,Version:version,Location:location}" \
+  --output table
+```
+
+---
+
+### Verificar Custos no Portal Azure
+
+1. Acesse: https://portal.azure.com
+2. Vá em **Cost Management + Billing**
+3. Veja os custos em tempo real
+4. Filtre por Resource Group: `rg-neomoto-prod`
+
 ## Tecnologias Utilizadas
 
 ### Backend:
+
 - .NET 9.0 (Minimal API)
 - Entity Framework Core 8.0
 - PostgreSQL 15
 
 ### DevOps:
+
 - Azure DevOps Pipelines
 - Docker
 - Azure Container Registry
@@ -149,6 +283,7 @@ dotnet test
 - Azure Database for PostgreSQL
 
 ### Testes:
+
 - xUnit
 - FluentAssertions
 - Microsoft.AspNetCore.Mvc.Testing
@@ -158,6 +293,7 @@ dotnet test
 ### Endpoints Principais:
 
 **Filiais:**
+
 - GET /api/filiais
 - GET /api/filiais/{id}
 - POST /api/filiais
@@ -165,6 +301,7 @@ dotnet test
 - DELETE /api/filiais/{id}
 
 **Motos:**
+
 - GET /api/motos
 - GET /api/motos/{id}
 - POST /api/motos
@@ -172,6 +309,7 @@ dotnet test
 - DELETE /api/motos/{id}
 
 **Manutencoes:**
+
 - GET /api/manutencoes
 - GET /api/manutencoes/{id}
 - POST /api/manutencoes
@@ -183,6 +321,7 @@ Documentacao completa: `/swagger`
 ## Banco de Dados
 
 O projeto utiliza **Azure Database for PostgreSQL** (PaaS) conforme requisitos:
+
 - Servico gerenciado
 - Backup automatico
 - SSL obrigatorio
@@ -193,6 +332,7 @@ Connection strings sao gerenciadas via variaveis de ambiente protegidas no Azure
 ## Variaveis de Ambiente
 
 Todas as credenciais e connection strings estao protegidas:
+
 - Configuradas no Azure DevOps Library
 - Marcadas como secretas
 - Nunca commitadas no codigo
@@ -201,6 +341,7 @@ Todas as credenciais e connection strings estao protegidas:
 ## Video Demonstrativo
 
 O video cobre:
+
 1. Apresentacao das ferramentas
 2. Configuracao da pipeline
 3. Alteracao do README e push
@@ -231,6 +372,7 @@ O video cobre:
 ## Suporte
 
 Para problemas ou duvidas:
+
 1. Verificar `INSTRUCOES_AZURE_DEVOPS.md`
 2. Revisar logs da pipeline
 3. Validar variaveis de ambiente
@@ -239,4 +381,3 @@ Para problemas ou duvidas:
 ## Licenca
 
 Projeto academico - FIAP 2024
-
