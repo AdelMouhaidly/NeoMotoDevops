@@ -11,7 +11,7 @@
 ## Links do Projeto
 
 - **GitHub:** https://github.com/AdelMouhaidly/NeoMotoDevops.git
-- **Azure DevOps:** [Link do Projeto Azure DevOps]
+- **Azure DevOps:** https://dev.azure.com/RM558485/Sprint%204%20%E2%80%93%20Azure%20DevOps
 - **YouTube:** https://youtu.be/dIJ2qahu6S8?si=EEYbln0V5JPE7Ei9
 
 ## Descricao da Solucao
